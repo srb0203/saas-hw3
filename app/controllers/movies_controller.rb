@@ -9,17 +9,53 @@ class MoviesController < ApplicationController
     @movie = Movie.find(id) # look up movie by unique ID
     # will render app/views/movies/show.<extension> by default
   end
-
   def index
-    @movies = Movie.order(params[:sort_by])
-    @sort_column = params[:sort_by]
-    if(params[:ratings])
-      @movies = Movie.where(:rating => params[:ratings].keys).order(params[:sort_by])
+    @all_ratings = Movie.ratings;
+    redir = false;
+
+    if params[:sort_by]
+      @sort_by = params[:sort_by]
+      session[:sort_by] = @sort_by
+      @sort_column = @sort_by
+    elsif session[:sort_by] 
+      @sort_by = session[:sort_by]
+      @sort_column = @sort_by
+      redir = true
+    else
+      @sort_by = nil
+      @sort_column = @sort_by
     end
-    @all_ratings = Movie.ratings
-    @checked_ratings = params[:ratings]
-    if !@checked_ratings
-      @checked_ratings = Hash.new
+
+    if params[:commit] == "Refresh" and params[:ratings].nil?
+      @ratings = nil
+      session[:ratings] = nil
+    elsif params[:ratings]
+      @ratings = params[:ratings]
+      session[:ratings] = @ratings
+    elsif session[:ratings]
+      @ratings = session[:ratings]
+      redir = true
+    else
+      @ratings = nil
+    end
+
+    if redir
+      flash.keep
+      redirect_to movies_path :sort_by=>@sort_by, :ratings=>@ratings
+    end
+
+    if @ratings and @sort_by
+      @movies = Movie.where(:rating => @ratings.keys).order(@sort_by)
+    elsif @ratings
+      @movies = Movie.where(:rating => @ratings.keys)
+    elsif @sort_by
+      @movies = Movie.order(@sort_by)
+    else 
+      @movies = Movie.all
+    end
+
+    if !@ratings
+      @ratings = Hash.new
     end
   end
 
